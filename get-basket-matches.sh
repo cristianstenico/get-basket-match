@@ -1,5 +1,5 @@
 #!/bin/bash
-NUMPARTITE=(14 14 10 14 10 22 22 14)
+NUMPARTITE=(14 14 10 14 10 22 22 14 )
 read -a DESCRIZIONE <<< "Under\ 13 Under\ 14 Under\ 15 Under\ 16 Under\ 18 Under\ 20 Promozione Serie\ D"
 read -a CAMPIONATO <<< "U13/M U14/M U15/M U16/M U18/M PM PM D"
 read -a COD <<< "21498 20326 20992 20134 21141 23688 25216 26263"
