@@ -39,7 +39,7 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 		turno = m.group('turno')
 
 		# Scarico la pagina della singola giornata del campionato
-		giornata = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')	
+		giornata = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')
 		tree = html.fromstring(giornata.content)
 
 		# Scorro le partite e individuo squadre, data e luogo
@@ -51,10 +51,20 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 			squadraA = partita.xpath('.//div/a')[0].text.strip()
 			squadraB = partita.xpath('.//div/a')[1].text.strip()
 			data_element = partita.xpath('.//td[@class="risTr1P"]/font')
-			data = (data_element[0] if len(data_element) > 0 else partita.xpath('.//td[@class="risTr1P"]')[0]).text.strip()
 
-			# Controllo se una delle 2 squadre è il Gardolo
-			if squadraA == 'BC GARDOLO' or squadraB == 'BC GARDOLO':
-				print(f'{squadraA} - {squadraB}')
-				print(f'il {data} a {luogo}')
-				print()
+			# Se è presente la data vado avanti (in caso contrario, vuol dire che la partita è già stata giocata)
+			if len(data_element) > 0:
+				data = data_element[0].text.strip()
+
+				# Controllo se una delle 2 squadre è il Gardolo
+				if squadraA == 'BC GARDOLO' or squadraB == 'BC GARDOLO':
+					#print(f'{squadraA} - {squadraB}')
+					#print(f'il {data} a {luogo}')
+					data = re.fullmatch('(?P<giorno>\d\d)/(?P<mese>\d\d)/(?P<anno>\d\d\d\d) - (?P<ora>\d\d:\d\d)',data)
+					giorno = f"{data.group('mese')}/{data.group('giorno')}/{data.group('anno')}"
+					ora = data.group('ora')
+					print(giorno, ora)
+				if squadraA == 'BC GARDOLO U20' or squadraB == 'BC GARDOLO U20':
+					print(f'{squadraA} - {squadraB}')
+					print(f'il {data} a {luogo}')
+					print()
