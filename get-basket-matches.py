@@ -1,5 +1,7 @@
 from lxml import html
+from datetime import date, datetime
 import requests
+import credentials
 import re
 squadre = {
 	'U13/M': 'Under 13',
@@ -12,6 +14,34 @@ squadre = {
 	'D': 'Serie D',
 	'OPENM': 'Coppa Trentino'
 }
+
+calendar_ids = {}
+
+# Inizializzo il servizio di Google Calendar
+service = credentials.get_service()
+
+# Salvo l'id dei vari calendari
+calendars = service.calendarList().list().execute()
+for item in calendars.get('items', []):
+	calendar_ids[item['summary']] = item['id']
+
+class Match:
+	def __init__(self, league, teamA, teamB, gameday, time, place):
+		self.league = league
+		self.teamA = teamA
+		self.teamB = teamB
+		self.gameday = gameday
+		self.time = time
+		self.place = place
+
+	def save(self):
+		calendar_id = [v for k, v in calendar_ids.items() if self.league in k][0]
+		print(calendar_id)
+		#print(f'{self.teamA} - {self.teamB} -> {self.place}')
+
+eventsResult = service.events().list(calendarId='primary', timeMin=datetime.utcnow().isoformat() + 'Z', maxResults=10, singleEvents=True, orderBy='startTime').execute()
+events = eventsResult.get('items', [])
+
 # Scarico la homepage del sito Fip Trentino
 home = requests.get('http://fip.it/risultati.asp?IDRegione=TN&com=RTN&IDProvincia=TN')
 
@@ -58,12 +88,12 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 
 				# Controllo se una delle 2 squadre è il Gardolo
 				if squadraA == 'BC GARDOLO' or squadraB == 'BC GARDOLO':
-					#print(f'{squadraA} - {squadraB}')
-					#print(f'il {data} a {luogo}')
+					
 					data = re.fullmatch('(?P<giorno>\d\d)/(?P<mese>\d\d)/(?P<anno>\d\d\d\d) - (?P<ora>\d\d:\d\d)',data)
-					giorno = f"{data.group('mese')}/{data.group('giorno')}/{data.group('anno')}"
+					giorno = date(int(data.group('anno')), int(data.group('mese')), int(data.group('giorno')))
 					ora = data.group('ora')
-					print(giorno, ora)
+					match = Match(squadre[campionato], squadraA, squadraB, giorno, ora, luogo)
+					match.save()
 				if squadraA == 'BC GARDOLO U20' or squadraB == 'BC GARDOLO U20':
 					print(f'{squadraA} - {squadraB}')
 					print(f'il {data} a {luogo}')
