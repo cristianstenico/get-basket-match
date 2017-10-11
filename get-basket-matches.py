@@ -1,5 +1,5 @@
 from lxml import html
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 import requests
 import credentials
 import re
@@ -33,16 +33,44 @@ class Match:
 		self.gameday = gameday
 		self.time = time
 		self.place = place
+		self.calendar_id = [v for k, v in calendar_ids.items() if self.league in k][0]
 
-	def save(self):
+	def check(self, id):
 		dayafter = self.gameday + timedelta(1)
-		calendar_id = [v for k, v in calendar_ids.items() if self.league in k][0]
 		eventsResult = service.events().list(
-			calendarId=calendar_id,
+			calendarId=id,
 			timeMin= datetime.combine(self.gameday, datetime.min.time()).isoformat('T') + 'Z',
 			timeMax=datetime.combine(dayafter, datetime.min.time()).isoformat('T') + 'Z').execute()
-		if len(eventsResult.get('items', [])) == 0:
-			print(self.teamA, self.teamB, self.gameday)
+		return len(eventsResult.get('items', [])) == 0
+
+	def save(self):
+		for cal_id in [self.calendar_id, calendar_ids['Partite']]:
+			if self.check(cal_id):
+				print(f'        Inserisco la partita nel calendario {[k for k, v in calendar_ids.items() if cal_id  == v][0]}')
+				start = datetime.combine(self.gameday, self.time)
+				end = start + timedelta(minutes=90)
+				match = {
+					'summary': f'{self.league}: {self.teamA} vs {self.teamB}',
+					'location': self.place,
+					'description': self.league,
+					'start': {
+					  	'dateTime': start.isoformat(),
+					  	'timeZone': 'Europe/Rome'
+					},
+					'end': {
+					  	'dateTime': end.isoformat(),
+					  	'timeZone': 'Europe/Rome'
+					},
+					'reminders': {
+						'useDefault': False,
+						'overrides': [
+							{'method': 'popup', 'minutes': 60}
+						],
+					},
+				}
+
+				res = service.events().insert(calendarId=cal_id, body=match).execute()
+				print(self.teamA, self.teamB, self.gameday)
 
 eventsResult = service.events().list(calendarId='primary', timeMin=datetime.utcnow().isoformat() + 'Z', maxResults=10, singleEvents=True, orderBy='startTime').execute()
 events = eventsResult.get('items', [])
@@ -96,7 +124,7 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 					
 					data = re.fullmatch('(?P<giorno>\d\d)/(?P<mese>\d\d)/(?P<anno>\d\d\d\d) - (?P<ora>\d\d:\d\d)',data)
 					giorno = date(int(data.group('anno')), int(data.group('mese')), int(data.group('giorno')))
-					ora = data.group('ora')
+					ora = time(*map(int,data.group('ora').split(':')))
 					match = Match(squadre[campionato], squadraA, squadraB, giorno, ora, luogo)
 					match.save()
 				if squadraA == 'BC GARDOLO U20' or squadraB == 'BC GARDOLO U20':
