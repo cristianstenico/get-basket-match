@@ -1,5 +1,5 @@
 from lxml import html
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import requests
 import credentials
 import re
@@ -35,9 +35,14 @@ class Match:
 		self.place = place
 
 	def save(self):
+		dayafter = self.gameday + timedelta(1)
 		calendar_id = [v for k, v in calendar_ids.items() if self.league in k][0]
-		print(calendar_id)
-		#print(f'{self.teamA} - {self.teamB} -> {self.place}')
+		eventsResult = service.events().list(
+			calendarId=calendar_id,
+			timeMin= datetime.combine(self.gameday, datetime.min.time()).isoformat('T') + 'Z',
+			timeMax=datetime.combine(dayafter, datetime.min.time()).isoformat('T') + 'Z').execute()
+		if len(eventsResult.get('items', [])) == 0:
+			print(self.teamA, self.teamB, self.gameday)
 
 eventsResult = service.events().list(calendarId='primary', timeMin=datetime.utcnow().isoformat() + 'Z', maxResults=10, singleEvents=True, orderBy='startTime').execute()
 events = eventsResult.get('items', [])
@@ -95,6 +100,6 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 					match = Match(squadre[campionato], squadraA, squadraB, giorno, ora, luogo)
 					match.save()
 				if squadraA == 'BC GARDOLO U20' or squadraB == 'BC GARDOLO U20':
-					print(f'{squadraA} - {squadraB}')
-					print(f'il {data} a {luogo}')
+					# print(f'{squadraA} - {squadraB}')
+					# print(f'il {data} a {luogo}')
 					print()
