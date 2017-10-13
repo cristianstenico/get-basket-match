@@ -1,5 +1,6 @@
 from lxml import html
 from datetime import date, datetime, timedelta, time
+from Game import Game
 import requests
 import credentials
 import re
@@ -10,6 +11,7 @@ squadre = {
 	'U16/M': 'Under 16',
 	'U17/M': 'Under 17',
 	'U18/M': 'Under 18',
+	'U20': 'Under 20',
 	'PM': 'Promozione',
 	'D': 'Serie D',
 	'OPENM': 'Coppa Trentino'
@@ -24,56 +26,6 @@ service = credentials.get_service()
 calendars = service.calendarList().list().execute()
 for item in calendars.get('items', []):
 	calendar_ids[item['summary']] = item['id']
-
-class Match:
-	def __init__(self, league, teamA, teamB, gameday, time, place):
-		self.league = league
-		self.teamA = teamA
-		self.teamB = teamB
-		self.gameday = gameday
-		self.time = time
-		self.place = place
-		self.calendar_id = [v for k, v in calendar_ids.items() if self.league in k][0]
-
-	def check(self, id):
-		dayafter = self.gameday + timedelta(1)
-		eventsResult = service.events().list(
-			calendarId=id,
-			timeMin= datetime.combine(self.gameday, datetime.min.time()).isoformat('T') + 'Z',
-			timeMax=datetime.combine(dayafter, datetime.min.time()).isoformat('T') + 'Z').execute()
-		return len(eventsResult.get('items', [])) == 0
-
-	def save(self):
-		for cal_id in [self.calendar_id, calendar_ids['Partite']]:
-			if self.check(cal_id):
-				print(f'        Inserisco la partita nel calendario {[k for k, v in calendar_ids.items() if cal_id  == v][0]}')
-				start = datetime.combine(self.gameday, self.time)
-				end = start + timedelta(minutes=90)
-				match = {
-					'summary': f'{self.league}: {self.teamA} vs {self.teamB}',
-					'location': self.place,
-					'description': self.league,
-					'start': {
-					  	'dateTime': start.isoformat(),
-					  	'timeZone': 'Europe/Rome'
-					},
-					'end': {
-					  	'dateTime': end.isoformat(),
-					  	'timeZone': 'Europe/Rome'
-					},
-					'reminders': {
-						'useDefault': False,
-						'overrides': [
-							{'method': 'popup', 'minutes': 60}
-						],
-					},
-				}
-
-				res = service.events().insert(calendarId=cal_id, body=match).execute()
-				print(self.teamA, self.teamB, self.gameday)
-
-eventsResult = service.events().list(calendarId='primary', timeMin=datetime.utcnow().isoformat() + 'Z', maxResults=10, singleEvents=True, orderBy='startTime').execute()
-events = eventsResult.get('items', [])
 
 # Scarico la homepage del sito Fip Trentino
 home = requests.get('http://fip.it/risultati.asp?IDRegione=TN&com=RTN&IDProvincia=TN')
@@ -106,28 +58,10 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 		tree = html.fromstring(giornata.content)
 
 		# Scorro le partite e individuo squadre, data e luogo
-		partite = tree.xpath('div[@class="risTr1"]')
-		luoghi = tree.xpath('div[@class="risTr2"]')
-		for i in range(len(partite)):
-			partita = partite[i]
-			luogo = luoghi[i].text.strip()
-			squadraA = partita.xpath('.//div/a')[0].text.strip()
-			squadraB = partita.xpath('.//div/a')[1].text.strip()
-			data_element = partita.xpath('.//td[@class="risTr1P"]/font')
-
-			# Se è presente la data vado avanti (in caso contrario, vuol dire che la partita è già stata giocata)
-			if len(data_element) > 0:
-				data = data_element[0].text.strip()
-
-				# Controllo se una delle 2 squadre è il Gardolo
-				if squadraA == 'BC GARDOLO' or squadraB == 'BC GARDOLO':
-					
-					data = re.fullmatch('(?P<giorno>\d\d)/(?P<mese>\d\d)/(?P<anno>\d\d\d\d) - (?P<ora>\d\d:\d\d)',data)
-					giorno = date(int(data.group('anno')), int(data.group('mese')), int(data.group('giorno')))
-					ora = time(*map(int,data.group('ora').split(':')))
-					match = Match(squadre[campionato], squadraA, squadraB, giorno, ora, luogo)
-					match.save()
-				if squadraA == 'BC GARDOLO U20' or squadraB == 'BC GARDOLO U20':
-					# print(f'{squadraA} - {squadraB}')
-					# print(f'il {data} a {luogo}')
-					print()
+		games = tree.xpath('div[@class="risTr1"]')
+		places = tree.xpath('div[@class="risTr2"]')
+		for i in range(len(games)):
+			# Inizializzo l'oggetto Game 
+			game = Game(league=squadre[campionato], gameData=games[i], place=places[i].text.strip())
+			if game.isGardolo:
+				game.save(service, cal_id=[v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
