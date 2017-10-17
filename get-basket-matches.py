@@ -62,6 +62,8 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 		places = tree.xpath('div[@class="risTr2"]')
 		for i in range(len(games)):
 			# Inizializzo l'oggetto Game 
-			game = Game(league=squadre[campionato], gameData=games[i], place=places[i].text.strip())
+			game = Game(league = squadre[campionato], gameData = games[i], place = places[i].text.strip())
 			if game.isGardolo:
-				game.save(service, cal_id=[v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
+				game.save(service, cal_id = [v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
+			elif game.isUnder20:
+				game.save(service, cal_id = calendar_ids['Partite Under 20'])
