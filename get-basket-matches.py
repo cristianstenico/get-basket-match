@@ -4,6 +4,7 @@ from Game import Game
 import requests
 import credentials
 import re
+
 squadre = {
 	'U13/M': 'Under 13',
 	'U14/M': 'Under 14',
@@ -26,6 +27,14 @@ service = credentials.get_service()
 calendars = service.calendarList().list().execute()
 for item in calendars.get('items', []):
 	calendar_ids[item['summary']] = item['id']
+
+# Prendo tutti gli eventi di quest'anno da Calendar per controllare eventuali spostamenti di partite
+# ed evitare doppioni
+remoteEvents = service.events().list(
+	calendarId = calendar_ids['Partite'],
+	timeMin = datetime.today().isoformat('T') + 'Z').execute()['items']
+
+localEvents = []
 
 # Scarico la homepage del sito Fip Trentino
 home = requests.get('http://fip.it/risultati.asp?IDRegione=TN&com=RTN&IDProvincia=TN')
@@ -63,7 +72,13 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 		for i in range(len(games)):
 			# Inizializzo l'oggetto Game 
 			game = Game(league = squadre[campionato], gameData = games[i], place = places[i].text.strip())
+			if game.isGardolo or game.isUnder20:
+				localEvents.append(game)
 			if game.isGardolo:
 				game.save(service, cal_id = [v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
 			elif game.isUnder20:
 				game.save(service, cal_id = calendar_ids['Partite Under 20'])
+			game.save(service, cal_id = calendar_ids['Partite'])
+
+# Controllo se ci sono partite su Calendar non più presenti sul sito Fip.
+# In questo caso devo cancellarle da Calendar perché con tutta probabilità sono state spostate
