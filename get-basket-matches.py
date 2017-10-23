@@ -76,9 +76,10 @@ for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase
 				localEvents.append(game)
 			if game.isGardolo:
 				game.save(service, cal_id = [v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
+				game.save(service, cal_id = calendar_ids['Partite'])
 			elif game.isUnder20:
 				game.save(service, cal_id = calendar_ids['Partite Under 20'])
-			game.save(service, cal_id = calendar_ids['Partite'])
+				game.save(service, cal_id = calendar_ids['Partite'])
 
 # Controllo se ci sono partite su Calendar non più presenti sul sito Fip.
 # In questo caso devo cancellarle da Calendar perché con tutta probabilità sono state spostate
