@@ -5,6 +5,7 @@ class Game:
 		self.league = league
 		self.teamA = gameData.xpath('.//div/a')[0].text.strip()
 		self.teamB = gameData.xpath('.//div/a')[1].text.strip()
+		self.summary = f'{self.league}: {self.teamA} vs {self.teamB}'
 		self.place = place
 		self.isGardolo = self.teamA == 'BC GARDOLO' or self.teamB == 'BC GARDOLO'
 		self.isUnder20 = self.teamA == 'BC GARDOLO U20' or self.teamB == 'BC GARDOLO U20'
@@ -18,17 +19,18 @@ class Game:
 				self.time = time(*map(int, data.group('time').split(':')))
 				if self.isUnder20:
 					self.league = 'Under 20'
+					self.summary = f'{self.league}: {self.teamA} vs {self.teamB}'
 			else:
 				self.futureGame = False
 				self.result = gameData.xpath('.//td[@class="risTr1P"]')[0].text.strip()
 
 
 	def check(self, service, id):
-		dayafter = self.gameday + timedelta(1)
 		eventsResult = service.events().list(
 			calendarId = id,
-			timeMin = datetime.combine(self.gameday, datetime.min.time()).isoformat('T') + 'Z',
-			timeMax = datetime.combine(dayafter, datetime.min.time()).isoformat('T') + 'Z').execute()
+			q=self.summary,
+			timeMin = datetime.combine(self.gameday, self.time).isoformat('T') + 'Z',
+			timeMax = datetime.combine(self.gameday, (datetime.combine(self.gameday, self.time) + timedelta(hours=1, minutes=30)).time()).isoformat('T') + 'Z').execute()
 		return len(eventsResult.get('items', [])) == 0
 
 	def save(self, service, cal_id):
@@ -38,7 +40,7 @@ class Game:
 				start = datetime.combine(self.gameday, self.time)
 				end = start + timedelta(minutes=90)
 				match = {
-					'summary': f'{self.league}: {self.teamA} vs {self.teamB}',
+					'summary': self.summary,
 					'location': self.place,
 					'description': self.league,
 					'start': {

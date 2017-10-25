@@ -42,44 +42,50 @@ home = requests.get('http://fip.it/risultati.asp?IDRegione=TN&com=RTN&IDProvinci
 # Cerco i vari link delle categorie
 for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase>.+)\', \'(?P<codice>.+)\', (?P<andata>\d), (?P<turno>\d)\)', home.text):
 	campionato = m.group('campionato')
-	codice = m.group('codice')
-	fase = m.group('fase')
-	andata = m.group('andata')
-	turno = m.group('turno')
-	print('_' * 30)
-	print()
-	print(f' {squadre[campionato]} '.center(30, '-'))
-	print()
-
-	# Scarico la pagina con le date della categoria corrente
-	page = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')
-
-	# Cerco i link di tutte le giornate del campionato
-	for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase>.+)\', \'(?P<codice>.+)\', (?P<andata>\d), (?P<turno>\d)\)', page.text):
-		campionato = m.group('campionato')
+	if len([v for k, v in calendar_ids.items() if campionato in squadre.keys() and squadre[campionato] in k]) > 0:
 		codice = m.group('codice')
 		fase = m.group('fase')
 		andata = m.group('andata')
 		turno = m.group('turno')
-
-		# Scarico la pagina della singola giornata del campionato
-		giornata = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')
-		tree = html.fromstring(giornata.content)
-
-		# Scorro le partite e individuo squadre, data e luogo
-		games = tree.xpath('div[@class="risTr1"]')
-		places = tree.xpath('div[@class="risTr2"]')
-		for i in range(len(games)):
-			# Inizializzo l'oggetto Game 
-			game = Game(league = squadre[campionato], gameData = games[i], place = places[i].text.strip())
-			if game.isGardolo or game.isUnder20:
-				localEvents.append(game)
-			if game.isGardolo:
-				game.save(service, cal_id = [v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
-				game.save(service, cal_id = calendar_ids['Partite'])
-			elif game.isUnder20:
-				game.save(service, cal_id = calendar_ids['Partite Under 20'])
-				game.save(service, cal_id = calendar_ids['Partite'])
+		print('_' * 30)
+		print()
+		print(f' {squadre[campionato]} '.center(30, '-'))
+		print()
+	
+		# Scarico la pagina con le date della categoria corrente
+		page = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')
+	
+		# Cerco i link di tutte le giornate del campionato
+		for m in re.finditer('getCampionato\(\'RTN\', \'(?P<campionato>.+)\', \'(?P<fase>.+)\', \'(?P<codice>.+)\', (?P<andata>\d), (?P<turno>\d)\)', page.text):
+			campionato = m.group('campionato')
+			codice = m.group('codice')
+			fase = m.group('fase')
+			andata = m.group('andata')
+			turno = m.group('turno')
+	
+			# Scarico la pagina della singola giornata del campionato
+			giornata = requests.get(f'http://fip.it/AjaxGetDataCampionato.asp?com=RTN&camp={campionato}&fase={fase}&girone={codice}&ar={andata}&turno={turno}')
+			tree = html.fromstring(giornata.content)
+	
+			# Scorro le partite e individuo squadre, data e luogo
+			games = tree.xpath('div[@class="risTr1"]')
+			places = tree.xpath('div[@class="risTr2"]')
+			for i in range(len(games)):
+				# Inizializzo l'oggetto Game 
+				game = Game(league = squadre[campionato], gameData = games[i], place = places[i].text.strip())
+				if game.isGardolo or game.isUnder20:
+					if game.futureGame:
+						localEvents.append(game)
+				if game.isGardolo:
+					game.save(service, cal_id = [v for k, v in calendar_ids.items() if squadre[campionato] in k][0])
+					game.save(service, cal_id = calendar_ids['Partite'])
+				elif game.isUnder20:
+					game.save(service, cal_id = calendar_ids['Partite Under 20'])
+					game.save(service, cal_id = calendar_ids['Partite'])
 
 # Controllo se ci sono partite su Calendar non più presenti sul sito Fip.
 # In questo caso devo cancellarle da Calendar perché con tutta probabilità sono state spostate
+for remoteEvent in remoteEvents:
+	localEvent = [l for l in localEvents if remoteEvent['start']['dateTime'].startswith(datetime.combine(l.gameday, l.time).isoformat())]
+	if len(localEvent) == 0:
+		print(remoteEvent['summary'], remoteEvent['start']['dateTime'])
