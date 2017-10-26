@@ -1,5 +1,9 @@
 from datetime import date, time, datetime, timedelta
+from pytz import timezone
 import re
+
+romeTimeZone = timezone('Europe/Rome')
+
 class Game:
 	def __init__(self, league, gameData, place):
 		self.league = league
@@ -26,29 +30,46 @@ class Game:
 
 
 	def check(self, service, id):
+		timeMin = datetime.combine(self.gameday, self.time) + timedelta(minutes=89)
+		timeMax = datetime.combine(self.gameday, self.time) + timedelta(minutes=1)
+
+		# Controllo lower-bound
 		eventsResult = service.events().list(
 			calendarId = id,
-			q=self.summary,
-			timeMin = datetime.combine(self.gameday, self.time).isoformat('T') + 'Z',
-			timeMax = datetime.combine(self.gameday, (datetime.combine(self.gameday, self.time) + timedelta(hours=1, minutes=30)).time()).isoformat('T') + 'Z').execute()
-		return len(eventsResult.get('items', [])) == 0
+			q = f'"{self.summary}"',
+			timeMax = romeTimeZone.localize(timeMax).isoformat('T'),
+			maxResults = 1).execute()
+
+		if len(eventsResult.get('items', [])) == 0:
+			return True
+
+		# Controllo upper-bound
+		eventsResult = service.events().list(
+			calendarId = id,
+			q = f'"{self.summary}"',
+			timeMin = romeTimeZone.localize(timeMin).isoformat('T'),
+			maxResults = 1).execute()
+
+		if len(eventsResult.get('items', [])) == 0:
+			return True
+		return False
 
 	def save(self, service, cal_id):
 		if self.futureGame:
 			if self.check(service, cal_id):
 				print(f'        Inserisco la partita nel calendario')
 				start = datetime.combine(self.gameday, self.time)
-				end = start + timedelta(minutes=90)
+				end = start + timedelta(minutes=90)	
 				match = {
 					'summary': self.summary,
 					'location': self.place,
 					'description': self.league,
 					'start': {
-					  	'dateTime': start.isoformat(),
+					  	'dateTime': start.isoformat('T'),
 					  	'timeZone': 'Europe/Rome'
 					},
 					'end': {
-					  	'dateTime': end.isoformat(),
+					  	'dateTime': end.isoformat('T'),
 					  	'timeZone': 'Europe/Rome'
 					},
 					'reminders': {
