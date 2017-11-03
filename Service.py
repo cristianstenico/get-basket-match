@@ -77,3 +77,18 @@ class Service:
 
     def existCalendar(self, league):
         return len([v for k, v in self.calendar_ids.items() if league in k]) > 0
+
+    def deleteGame(self, game):
+        # Cancello prima l'evento dal calendario generale
+        self.service.events().delete(
+            calendarId=self.calendar_ids['Partite'],
+            eventId=game.id
+        )
+
+        # Per cancellare l'evento dal calendario specifico
+        # devo prima ricavarne l'id... non ho ancora trovato una soluzione intelligente
+        self.service.events().list(
+            calendarId=[v for k, v in self.calendar_ids.items() if game.description in k][0],
+            q=f'"{game.summary}"',
+            orderBy='startTime'
+        )
