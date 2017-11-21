@@ -78,4 +78,5 @@ for remoteEvent in service.remoteEvents:
         if remoteEvent['start']['dateTime'] == romeTimeZone.localize(datetime.combine(l.gameday, l.time)).isoformat('T') and remoteEvent['summary'] in [f'{league}: {l.teamA} vs {l.teamB}' for league in l.league]]
     if len(localEvent) == 0:
         service.deleteGame(remoteEvent)
-        print(remoteEvent['summary'], remoteEvent['start']['dateTime'])
+        print('Cancellato:', remoteEvent['summary'], remoteEvent['start']['dateTime'])
+        

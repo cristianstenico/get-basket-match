@@ -79,16 +79,27 @@ class Service:
         return len([v for k, v in self.calendar_ids.items() if league in k]) > 0
 
     def deleteGame(self, game):
-        # Cancello prima l'evento dal calendario generale
+        gameSummary = game['summary']
+        calendarId = [v for k, v in self.calendar_ids.items() if game['description'] in k][0]
+        
+        # Per cancellare l'evento dal calendario specifico devo ricavarne l'id,
+        # per cui devo fare una richiesta al suo calendario cercando il nome dell'evento
+        # e data d'inizio
+        gameInSpecificCalendar = self.service.events().list(
+            calendarId=calendarId,
+            q=f'"{gameSummary}"',
+            orderBy='startTime',
+            timeMin=game['start']['dateTime'],
+            singleEvents=True
+        ).execute()['items'][0]
+
+        # Cancello la partita dal calendario specifico
+        self.service.events().delete(
+            calendarId=calendarId,
+            eventId=gameInSpecificCalendar['id']
+        ).execute()
+        # Cancello la partita dal calendario generale 
         self.service.events().delete(
             calendarId=self.calendar_ids['Partite'],
-            eventId=game.id
-        )
-
-        # Per cancellare l'evento dal calendario specifico
-        # devo prima ricavarne l'id... non ho ancora trovato una soluzione intelligente
-        self.service.events().list(
-            calendarId=[v for k, v in self.calendar_ids.items() if game.description in k][0],
-            q=f'"{game.summary}"',
-            orderBy='startTime'
-        )
+            eventId=game['id']
+        ).execute()
