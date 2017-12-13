@@ -7,6 +7,7 @@ import requests
 import re
 
 squadre = {
+	'TAQ': 'Aquilotti',
     'U13/M': 'Under 13',
     'U14/M': 'Under 14',
     'U15/M': 'Under 15',

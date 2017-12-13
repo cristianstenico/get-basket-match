@@ -11,7 +11,7 @@ class Game:
         self.teamA = gameData.xpath('.//div/a')[0].text.strip()
         self.teamB = gameData.xpath('.//div/a')[1].text.strip()
         self.place = place
-        self.isGardolo = self.teamA == 'BC GARDOLO' or self.teamB == 'BC GARDOLO'
+        self.isGardolo = self.teamA == 'BC GARDOLO' or self.teamB == 'BC GARDOLO' or self.teamA == 'MB GARDOLO' or self.teamB == 'MB GARDOLO'
         self.isUnder20 = self.teamA == 'BC GARDOLO U20' or self.teamB == 'BC GARDOLO U20'
         if self.isGardolo or self.isUnder20:
             dateData = gameData.xpath('.//td[@class="risTr1P"]/font')
