@@ -31,10 +31,8 @@ service = Service()
 home = requests.post('http://fip.it/FipWeb/ajaxRisultatiGetMenuCampionati.aspx', data={'ar':'1', 'com':'RTN', 'IDProvincia':'TN', 'IDRegione':'TN','turno':'1'})
 
 # Cerco i vari link delle categorie
-for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', home.text):
+for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', home.text):
     campionato = m.group('campionato')
-    #print(m.group('sesso'), m.group('campionato'), m.group('fase'), m.group('codice'), m.group('andata'), m.group('turno'), m.group('idregione'), m.group('idprovincia'), sep='\n')
-    #exit(0)
     if campionato in squadre.keys() and service.existCalendar(squadre[campionato]):
         codice = m.group('codice')
         fase = m.group('fase')
@@ -52,7 +50,7 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
         page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'IDRegione':idregione, 'IDProvincia':idprovincia, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
 
         # Cerco i link di tutte le giornate del campionato
-        for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', page.text):
+        for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', page.text):
             campionato = m.group('campionato')
             codice = m.group('codice')
             fase = m.group('fase')

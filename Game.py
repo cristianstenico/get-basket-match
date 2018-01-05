@@ -18,7 +18,7 @@ class Game:
             if result == '-':
                 self.futureGame = True
                 self.place = place
-                data = re.fullmatch('(?P<day>\d\d)/(?P<month>\d\d)/(?P<year>\d\d\d\d) - (?P<time>\d\d:\d\d)', dateData)
+                data = re.fullmatch('(?P<day>\d\d)-(?P<month>\d\d)-(?P<year>\d\d\d\d) - (?P<time>\d\d:\d\d)', dateData)
                 self.gameday = date(int(data.group('year')), int(data.group('month')), int(data.group('day')))
                 self.time = time(*map(int, data.group('time').split(':')))
                 if self.isUnder20:
