@@ -81,7 +81,7 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
                     teamA=squadre1[i].text,
                     teamB=squadre2[i].text,
                     result=result,
-                    place=re.sub(r'[\t\n\r]', '', places[i].text),
+                    place=re.sub(r'\\t|\\n|\\r', '', places[i].text),
                     dateData=dates[i]
                 )
                 if game.isGardolo or game.isUnder20:
