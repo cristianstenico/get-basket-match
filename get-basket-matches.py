@@ -1,4 +1,4 @@
-from lxml import html
+from lxml import html, etree
 from datetime import datetime
 from Game import Game
 from pytz import timezone
@@ -31,7 +31,7 @@ service = Service()
 home = requests.post('http://fip.it/FipWeb/ajaxRisultatiGetMenuCampionati.aspx', data={'ar':'1', 'com':'RTN', 'IDProvincia':'TN', 'IDRegione':'TN','turno':'1'})
 
 # Cerco i vari link delle categorie
-for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', home.text):
+for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']*)\', \'(?P<idprovincia>[^\']*)\'\)', home.text):
     campionato = m.group('campionato')
     if campionato in squadre.keys() and service.existCalendar(squadre[campionato]):
         codice = m.group('codice')
@@ -47,10 +47,12 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
         print()
 
         # Scarico la pagina con le date della categoria corrente
-        page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'IDRegione':idregione, 'IDProvincia':idprovincia, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
+        # page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'IDRegione':idregione, 'IDProvincia':idprovincia, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
+        page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
 
         # Cerco i link di tutte le giornate del campionato
-        for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']+)\', \'(?P<idprovincia>[^\']+)\'\)', page.text):
+        tree = html.fromstring(f'<div>{page.text}</div>')
+        for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']*)\', \'(?P<idprovincia>[^\']*)\'\)', etree.tostring(tree.xpath('//div[@class="hidden-xs"]')[0]).decode()):
             campionato = m.group('campionato')
             codice = m.group('codice')
             fase = m.group('fase')
@@ -60,7 +62,8 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
             idregione = m.group('idregione')
             idprovincia = m.group('idprovincia')
             # Scarico la pagina della singola giornata del campionato
-            giornata = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'camp':campionato, 'ar':andata, 'com':'RTN', 'fase':fase, 'girone':codice, 'IDProvincia':idprovincia, 'IDRegione':idregione, 'sesso':sesso, 'turno':turno})
+            # giornata = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'camp':campionato, 'ar':andata, 'com':'RTN', 'fase':fase, 'girone':codice, 'IDProvincia':idprovincia, 'IDRegione':idregione, 'sesso':sesso, 'turno':turno})
+            giornata = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'camp':campionato, 'ar':andata, 'com':'RTN', 'fase':fase, 'girone':codice, 'sesso':sesso, 'turno':turno})
             tree = html.fromstring(f'<div>{giornata.content}</div>')
             # Scorro le partite e individuo squadre, data e luogo
             squadre1 = tree.xpath('//td[@class="nome-squadra nome-squadra-1"]')
@@ -69,7 +72,7 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
             squadre2 = tree.xpath('//td[@class="nome-squadra nome-squadra-2"]')
             places = tree.xpath('//td[@class="luogo-arbitri"]')
             dates = tree.xpath('//td[@class="luogo-arbitri"]/strong/child::text() | //td[@class="luogo-arbitri"]/strong/font/child::text()')
-            for i in range(len(squadre1)):
+            for i in range(len(risultati1)):
                 if risultati1[i].text and risultati2[i].text:
                     result = f'{risultati1[i].text}-{risultati2[i].text}'
                 else:
