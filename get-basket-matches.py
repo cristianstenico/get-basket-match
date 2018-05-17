@@ -41,17 +41,15 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
         sesso = m.group('sesso')
         idregione = m.group('idregione')
         idprovincia = m.group('idprovincia')
-        print('_' * 30)
-        print()
-        print(f' {squadre[campionato]} '.center(30, '-'))
-        print()
 
         # Scarico la pagina con le date della categoria corrente
         # page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'IDRegione':idregione, 'IDProvincia':idprovincia, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
         page = requests.post(f'http://fip.it/FipWeb/ajaxRisultatiGetPartite.aspx', data={'com':'RTN', 'sesso': sesso, 'camp':campionato, 'fase':fase, 'girone':codice, 'ar':andata, 'turno':turno})
-
-        # Cerco i link di tutte le giornate del campionato
         tree = html.fromstring(f'<div>{page.text}</div>')
+        
+        # Serve per far scrivere solo i gironi in cui è presente una squadra del Gardolo
+        printHeader = False
+        # Cerco i link di tutte le giornate del campionato
         for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<campionato>[^\']+)\', \'(?P<fase>[^\']+)\', \'(?P<codice>[^\']+)\', \'(?P<andata>\d)\', \'(?P<turno>\d+)\', \'(?P<idregione>[^\']*)\', \'(?P<idprovincia>[^\']*)\'\)', etree.tostring(tree.xpath('//div[@class="hidden-xs"]')[0]).decode()):
             campionato = m.group('campionato')
             codice = m.group('codice')
@@ -88,6 +86,12 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
                     dateData=dates[i]
                 )
                 if game.isGardolo or game.isUnder20:
+                    if not printHeader:
+                        printHeader = True
+                        print('_' * 80)
+                        print()
+                        print((' ' + tree.xpath('//p[contains(@class, "nazgio-dati-tit")]')[0].text + ' ').center(80, '-'))
+                        print()
                     if game.futureGame:
                         localEvents.append(game)
                         service.saveGame(game)
