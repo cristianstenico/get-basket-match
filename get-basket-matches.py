@@ -1,3 +1,4 @@
+import sys
 from lxml import html, etree
 from datetime import datetime
 from Game import Game
@@ -5,15 +6,19 @@ from pytz import timezone
 from Service import Service
 import requests
 import re
+from cmd_parser import parser
+
+# Visualizzo solo le partite, senza salvare su calendar (serve per test, ad esempio)
+test = parser.parse_args().test
 
 squadre = {
 	'TAQ': 'Aquilotti',
     'U13/M': 'Under 13',
     'U14/M': 'Under 14',
-    'U15/M': 'Under 15',
-    'U16/M': 'Under 16',
+    'U15S/M': 'Under 15',
+    'U16S/M': 'Under 16',
     'U17/M': 'Under 17',
-    'U18/M': 'Under 18',
+    'U18S/M': 'Under 18',
     'U20': 'Under 20',
     'PM': 'Promozione',
     'D': 'Serie D',
@@ -51,7 +56,7 @@ def getSingleMatch(campionato, codice, fase, andata, turno, sesso, idregione, id
             place=re.sub(r'\\t|\\n|\\r', '', places[i].text),
             dateData=dates[i]
         )
-        if game.isGardolo or game.isUnder20:
+        if game.isGardolo or game.isUnder20 or game.isGardoloA or game.isGardoloB:
             if not printHeader:
                 printHeader = True
                 print('_' * 80)
@@ -60,7 +65,8 @@ def getSingleMatch(campionato, codice, fase, andata, turno, sesso, idregione, id
                 print()
             if game.futureGame:
                 localEvents.append(game)
-                service.saveGame(game)
+                if not test:
+                    service.saveGame(game)
                 print(f'{game.teamA} - {game.teamB}: {game.gameday} {game.time}')
             else:
                 print(f'{game.teamA} - {game.teamB}: {game.result}')
@@ -109,9 +115,10 @@ for m in re.finditer('getRisultatiPartite\(\'RTN\', \'(?P<sesso>[MF])\', \'(?P<c
 # Controllo se ci sono partite su Calendar non più presenti sul sito Fip.
 # In questo caso devo cancellarle da Calendar perché con tutta probabilità
 # sono state spostate
-for remoteEvent in service.remoteEvents:
-    localEvent = [l for l in localEvents
-        if remoteEvent['start']['dateTime'] == romeTimeZone.localize(datetime.combine(l.gameday, l.time)).isoformat('T') and remoteEvent['summary'] in [f'{league}: {l.teamA} vs {l.teamB}' for league in l.league]]
-    if len(localEvent) == 0:
-        service.deleteGame(remoteEvent)
-        print('Cancellato:', remoteEvent['summary'], remoteEvent['start']['dateTime'])
+if not test:
+    for remoteEvent in service.remoteEvents:
+        localEvent = [l for l in localEvents
+            if remoteEvent['start']['dateTime'] == romeTimeZone.localize(datetime.combine(l.gameday, l.time)).isoformat('T') and remoteEvent['summary'] in [f'{league}: {l.teamA} vs {l.teamB}' for league in l.league]]
+        if len(localEvent) == 0:
+            service.deleteGame(remoteEvent)
+            print('Cancellato:', remoteEvent['summary'], remoteEvent['start']['dateTime'])

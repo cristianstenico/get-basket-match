@@ -12,7 +12,9 @@ class Game:
         self.teamB = teamB
         self.isGardolo = self.teamA == 'BC GARDOLO' or self.teamB == 'BC GARDOLO' or self.teamA == 'MB GARDOLO' or self.teamB == 'MB GARDOLO'
         self.isUnder20 = self.teamA == 'BC GARDOLO U20' or self.teamB == 'BC GARDOLO U20'
-        if self.isGardolo or self.isUnder20:
+        self.isGardoloA = self.teamA == 'BC GARDOLO A' or self.teamB == 'BC GARDOLO A'
+        self.isGardoloB = self.teamA == 'BC GARDOLO B' or self.teamB == 'BC GARDOLO B'
+        if self.isGardolo or self.isUnder20 or self.isGardoloA or self.isGardoloB:
             # Se è presente la data, la partita non è ancora stata giocata,
             # posso quindi salvarla su calendar
             if result == '-':
