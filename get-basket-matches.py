@@ -13,6 +13,7 @@ test = parser.parse_args().test
 
 squadre = {
 	'TAQ': 'Aquilotti',
+    'ES': 'Esordienti',
     'U13/M': 'Under 13',
     'U14/M': 'Under 14',
     'U15S/M': 'Under 15',
